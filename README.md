@@ -43,6 +43,23 @@ dependencies:
 final db = AutoSqfLite(databaseName: 'my_app');
 ```
 
+### Database Encryption
+
+To use an encrypted database, simply provide a password when creating the AutoSqfLite instance:
+
+```dart
+final db = AutoSqfLite(
+  databaseName: 'my_app',
+  password: 'your_secure_password'
+);
+```
+
+**Important Security Notes:**
+- Store your encryption password securely (e.g., using flutter_secure_storage)
+- The password must be provided consistently for all database operations
+- If the password is lost, the database cannot be recovered
+- Consider implementing proper key management in your production environment
+
 ### Creating Models
 
 ```dart
