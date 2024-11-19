@@ -23,6 +23,7 @@ A simple, automatic SQLite database helper for Flutter that handles table creati
 - 💾 Simple CRUD operations
 - 🛠 Zero configuration required
 - 🎯 Type-safe operations
+- 🔒 Password protection for databases
 
 ## Installation
 
@@ -199,7 +200,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- Built on top of the excellent [sqflite](https://pub.dev/packages/sqflite) package
+- Built on top of the excellent [sqflite_sqlcipher](https://pub.dev/packages/sqflite_sqlcipher) package
 - Inspired by the need for simpler database operations in Flutter
 
 ## Support
