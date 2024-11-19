@@ -1,15 +1,28 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:autosqflite/autosqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   // Initialize FFI for testing
   setUp(() {
+    // Skip tests on web platform
+    if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) {
+      return;
+    }
+
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   });
 
   group('AutoSqfLite Tests', () {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return;
+    }
+
     late AutoSqfLite db;
 
     setUp(() {
@@ -162,6 +175,43 @@ void main() {
         // Test delete on non-existent record
         final nonExistentDelete = await db.delete('users', -1);
         expect(nonExistentDelete, equals(0));
+      });
+    });
+
+    group('Encryption Tests', () {
+      test('Create and access encrypted database', () async {
+        final encryptedDb = AutoSqfLite(
+          databaseName: 'encrypted_test',
+          password: 'test_password',
+        );
+
+        final testData = {'name': 'Secret Data', 'value': 42};
+        await encryptedDb.insert('secure_table', testData);
+
+        final results = await encryptedDb.getAll('secure_table');
+        expect(results.length, equals(1));
+        expect(results.first['name'], equals('Secret Data'));
+      });
+
+      test('Access encrypted database with wrong password fails', () async {
+        // First create database with correct password
+        final correctDb = AutoSqfLite(
+          databaseName: 'encrypted_test',
+          password: 'correct_password',
+        );
+
+        await correctDb.insert('secure_table', {'test': 'data'});
+
+        // Try to access with wrong password
+        final wrongDb = AutoSqfLite(
+          databaseName: 'encrypted_test',
+          password: 'wrong_password',
+        );
+
+        expect(
+          () async => await wrongDb.getAll('secure_table'),
+          throwsA(isA<DatabaseException>()),
+        );
       });
     });
 

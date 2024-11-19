@@ -1,13 +1,17 @@
 library autosqflite;
 
-import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 
 class AutoSqfLite {
   final String databaseName;
+  final String? password;
   Database? _db;
 
-  AutoSqfLite({required this.databaseName});
+  AutoSqfLite({
+    required this.databaseName,
+    this.password,
+  });
 
   Future<Database> get database async {
     _db ??= await _initDatabase();
@@ -21,6 +25,7 @@ class AutoSqfLite {
     return await openDatabase(
       path,
       version: 1,
+      password: password,
       onCreate: (db, version) async {
         // Initial database creation
       },
