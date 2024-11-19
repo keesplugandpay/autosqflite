@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0 - 2024-11-19
+
+### Added
+- Database encryption support using SQLCipher
+- Password protection for databases
+- Documentation for encryption features
+
+### Changed
+- Switched from `sqflite` to `sqflite_sqlcipher` for encryption support
+
 ## 1.0.0 - 2024-11-19
 
 Initial release of AutoSqfLite with the following features:
