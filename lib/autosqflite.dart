@@ -82,7 +82,16 @@ class AutoSqfLite {
         return MapEntry(key, value ? 1 : 0);
       }
       if (value is DateTime) {
-        return MapEntry(key, value.millisecondsSinceEpoch);
+        return MapEntry("${key}_datetime", value.millisecondsSinceEpoch);
+      }
+      return MapEntry(key, value);
+    });
+  }
+
+  Map<String, dynamic> _mapDataFromDb(Map<String, dynamic> data) {
+    return data.map((key, value) {
+      if (key.endsWith('_datetime')) {
+        return MapEntry(key.replaceAll('_datetime', ''), DateTime.fromMillisecondsSinceEpoch(value));
       }
       return MapEntry(key, value);
     });
@@ -117,7 +126,8 @@ class AutoSqfLite {
 
   Future<List<Map<String, dynamic>>> getAll(String tableName) async {
     final db = await database;
-    return await db.query(tableName);
+    final results = await db.query(tableName);
+    return results.map((result) => _mapDataFromDb(result)).toList();
   }
 
   Future<Map<String, dynamic>?> get(String tableName, int id) async {
@@ -134,7 +144,7 @@ class AutoSqfLite {
       limit: 1,
     );
 
-    return results.isNotEmpty ? results.first : null;
+    return results.isNotEmpty ? _mapDataFromDb(results.first) : null;
   }
 
   Future<int> update(String tableName, Map<String, dynamic> data, int id) async {
