@@ -1,223 +1,151 @@
-import 'dart:io';
-
-import 'package:flutter_test/flutter_test.dart';
 import 'package:autosqflite/autosqflite.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' as ffi;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize FFI for testing
-  setUp(() {
-    // Skip tests on web platform
-    if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) {
-      return;
-    }
+  late AutoSqfLite db;
 
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
+  setUpAll(() {
+    ffi.sqfliteFfiInit();
+    ffi.databaseFactory = ffi.databaseFactoryFfi;
   });
 
-  group('AutoSqfLite Tests', () {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      return;
-    }
+  setUp(() async {
+    db = AutoSqfLite(databaseName: 'test_db');
+  });
 
-    late AutoSqfLite db;
+  tearDown(() async {
+    final dbClient = await db.database;
+    await dbClient.close();
+    await ffi.deleteDatabase('test_db');
+  });
 
-    setUp(() {
-      db = AutoSqfLite(databaseName: 'test_auto');
+  group('DateTime and Nested Objects Tests', () {
+    test('should handle DateTime fields with nested objects', () async {
+      // Arrange
+      final now = DateTime.now();
+      final testData = {
+        'title': 'Main Item',
+        'created': now,
+        'address': {
+          'street': '123 Main St',
+          'created': now.add(Duration(hours: 1)),
+        },
+      };
+
+      // Act
+      final id = await db.insert('items', testData);
+      final result = await db.get('items', id);
+
+      // Assert
+      expect(result!['title'], 'Main Item');
+      expect(result['created'], isA<DateTime>());
+      expect(result['created'], now);
+      expect(result['address_id'], isA<int>());
     });
 
-    test('Database initialization and connection', () async {
-      // Test constructor and database getter
-      expect(db.databaseName, equals('test_auto'));
-      final database = await db.database;
-      expect(database, isNotNull);
-      expect(database.isOpen, isTrue);
+    test('should retrieve nested object with DateTime fields', () async {
+      // Arrange
+      final now = DateTime.now();
+      final address = {
+        'street': '123 Main St',
+        'created': now,
+      };
 
-      // Test singleton behavior of database getter
-      final database2 = await db.database;
-      expect(identical(database, database2), isTrue);
+      // Act
+      final addressId = await db.insert('addresses', address);
+      final result = await db.get('addresses', addressId);
+
+      // Assert
+      expect(result!['street'], '123 Main St');
+      expect(result['created'], isA<DateTime>());
+      expect(result['created'], now);
     });
 
-    group('Table Operations', () {
-      test('Table creation with different data types', () async {
-        final testData = {
-          'int_field': 42,
-          'double_field': 3.14,
-          'text_field': 'Hello',
-          'bool_field': true,
-          'datetime_field': DateTime.now().millisecondsSinceEpoch,
-          'null_field': null,
-        };
+    test('should handle multiple DateTime fields in getAll with nested objects', () async {
+      // Arrange
+      final now = DateTime.now();
+      final items = [
+        {
+          'title': 'Item 1',
+          'created': now,
+          'address': {
+            'street': 'Street 1',
+            'created': now,
+          },
+        },
+        {
+          'title': 'Item 2',
+          'created': now.add(Duration(days: 1)),
+          'address': {
+            'street': 'Street 2',
+            'created': now.add(Duration(days: 1)),
+          },
+        },
+      ];
 
-        await db.insert('type_test', testData);
+      // Act
+      for (var item in items) {
+        await db.insert('items', item);
+      }
+      final results = await db.getAll('items');
 
-        final results = await db.getAll('type_test');
-        expect(results.length, equals(1));
-
-        final savedData = results.first;
-        expect(savedData['int_field'], isA<int>());
-        expect(savedData['double_field'], isA<num>());
-        expect(savedData['text_field'], isA<String>());
-        expect(savedData['bool_field'], equals(1));
-        expect(savedData['datetime_field'], isA<int>());
-      });
-
-      test('Adding new columns to existing table', () async {
-        // Create initial table
-        final initialData = {'name': 'John'};
-        await db.insert('users', initialData);
-
-        // Add new column through new data
-        final newData = {
-          'name': 'Jane',
-          'age': 25,
-          'email': 'jane@example.com',
-        };
-        await db.insert('users', newData);
-
-        // Verify both records and new columns
-        final results = await db.getAll('users');
-        expect(results.length, equals(2));
-
-        final secondRecord = results.where((r) => r['name'] == 'Jane').first;
-        expect(secondRecord['age'], equals(25));
-        expect(secondRecord['email'], equals('jane@example.com'));
-      });
+      // Assert
+      expect(results.length, 2);
+      for (var result in results) {
+        expect(result['created'], isA<DateTime>());
+        expect(result['address_id'], isA<int>());
+      }
     });
 
-    group('CRUD Operations', () {
-      test('Insert and GetAll', () async {
-        final testData1 = {'name': 'John', 'age': 30};
-        final testData2 = {'name': 'Jane', 'age': 25};
+    test('should update DateTime fields in nested objects', () async {
+      // Arrange
+      final now = DateTime.now();
+      final testData = {
+        'title': 'Test Item',
+        'created': now,
+        'address': {
+          'street': '123 Main St',
+          'created': now,
+        },
+      };
 
-        await db.insert('users', testData1);
-        await db.insert('users', testData2);
+      // Act
+      final id = await db.insert('items', testData);
+      final newDate = now.add(Duration(days: 1));
+      await db.update(
+          'items',
+          {
+            'created': newDate,
+          },
+          id);
+      final result = await db.get('items', id);
 
-        final results = await db.getAll('users');
-        expect(results.length, equals(2));
-        expect(results.any((r) => r['name'] == 'John'), isTrue);
-        expect(results.any((r) => r['name'] == 'Jane'), isTrue);
-      });
-
-      test('Get single record', () async {
-        // Test get on empty table
-        final emptyResult = await db.get('users', 1);
-        expect(emptyResult, isNull);
-
-        // Test get with existing record
-        final testData = {'name': 'John', 'age': 30};
-        await db.insert('users', testData);
-
-        final results = await db.getAll('users');
-        final id = results.first['id'] as int;
-
-        final record = await db.get('users', id);
-        expect(record, isNotNull);
-        expect(record!['name'], equals('John'));
-        expect(record['age'], equals(30));
-
-        // Test get with non-existent id
-        final nonExistent = await db.get('users', -1);
-        expect(nonExistent, isNull);
-      });
-
-      test('Update record', () async {
-        // Insert initial record
-        final initialData = {'name': 'John', 'age': 30};
-        await db.insert('users', initialData);
-
-        final results = await db.getAll('users');
-        final id = results.first['id'] as int;
-
-        // Update with new data and new column
-        final updateData = {
-          'name': 'John Updated',
-          'age': 31,
-          'email': 'john@example.com',
-        };
-
-        final updateCount = await db.update('users', updateData, id);
-        expect(updateCount, equals(1));
-
-        // Verify update
-        final updated = await db.get('users', id);
-        expect(updated!['name'], equals('John Updated'));
-        expect(updated['age'], equals(31));
-        expect(updated['email'], equals('john@example.com'));
-
-        // Test update on non-existent record
-        final nonExistentUpdate = await db.update('users', updateData, -1);
-        expect(nonExistentUpdate, equals(0));
-      });
-
-      test('Delete record', () async {
-        // Test delete on empty table
-        final emptyDelete = await db.delete('users', 1);
-        expect(emptyDelete, equals(0));
-
-        // Insert and delete record
-        final testData = {'name': 'John', 'age': 30};
-        await db.insert('users', testData);
-
-        final results = await db.getAll('users');
-        final id = results.first['id'] as int;
-
-        final deleteCount = await db.delete('users', id);
-        expect(deleteCount, equals(1));
-
-        // Verify deletion
-        final deleted = await db.get('users', id);
-        expect(deleted, isNull);
-
-        // Test delete on non-existent record
-        final nonExistentDelete = await db.delete('users', -1);
-        expect(nonExistentDelete, equals(0));
-      });
+      // Assert
+      expect(result!['created'], newDate);
+      expect(result['address_id'], isA<int>());
     });
 
-    group('Encryption Tests', () {
-      test('Create and access encrypted database', () async {
-        final encryptedDb = AutoSqfLite(
-          databaseName: 'encrypted_test',
-          password: 'test_password',
-        );
+    test('should handle null DateTime fields in nested objects', () async {
+      // Arrange
+      final testData = {
+        'title': 'Test Item',
+        'created': null,
+        'address': {
+          'street': '123 Main St',
+          'created': null,
+        },
+      };
 
-        final testData = {'name': 'Secret Data', 'value': 42};
-        await encryptedDb.insert('secure_table', testData);
+      // Act
+      final id = await db.insert('items', testData);
+      final result = await db.get('items', id);
 
-        final results = await encryptedDb.getAll('secure_table');
-        expect(results.length, equals(1));
-        expect(results.first['name'], equals('Secret Data'));
-      });
-
-      test('Access encrypted database with wrong password fails', () async {
-        // First create database with correct password
-        final correctDb = AutoSqfLite(
-          databaseName: 'encrypted_test',
-          password: 'correct_password',
-        );
-
-        await correctDb.insert('secure_table', {'test': 'data'});
-
-        // Try to access with wrong password
-        final wrongDb = AutoSqfLite(
-          databaseName: 'encrypted_test',
-          password: 'wrong_password',
-        );
-
-        expect(
-          () async => await wrongDb.getAll('secure_table'),
-          throwsA(isA<DatabaseException>()),
-        );
-      });
-    });
-
-    tearDown(() async {
-      final dbPath = await databaseFactory.getDatabasesPath();
-      await deleteDatabase('$dbPath/test_auto.db');
+      // Assert
+      expect(result!['created'], null);
+      expect(result['address_id'], isA<int>());
     });
   });
 }

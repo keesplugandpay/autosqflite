@@ -51,8 +51,16 @@ class AutoSqfLite {
   }
 
   Future<void> _createTableFromMap(Database db, String tableName, Map<String, dynamic> data) async {
-    final columns = _generateColumnDefinitions(data);
+    // First create tables for nested objects
+    for (var entry in data.entries) {
+      if (entry.value is Map<String, dynamic>) {
+        final nestedTableName = '${entry.key}s'; // Pluralize table name
+        await _createTableFromMap(db, nestedTableName, entry.value as Map<String, dynamic>);
+      }
+    }
 
+    // Then create main table with foreign key references
+    final columns = _generateColumnDefinitions(data);
     await db.execute('''
       CREATE TABLE $tableName (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,6 +71,10 @@ class AutoSqfLite {
 
   String _generateColumnDefinitions(Map<String, dynamic> data) {
     return data.entries.map((entry) {
+      if (entry.value is Map<String, dynamic>) {
+        // Create foreign key column for nested objects
+        return '${entry.key}_id INTEGER REFERENCES ${entry.key}s(id)';
+      }
       final type = _getSqliteType(entry.value);
       return '${entry.key} $type';
     }).join(', ');
@@ -111,15 +123,25 @@ class AutoSqfLite {
     }
   }
 
-  Future<void> insert(String tableName, Map<String, dynamic> data) async {
+  Future<int> insert(String tableName, Map<String, dynamic> data) async {
     final db = await database;
-
     await _updateDatabaseIfNeeded(db, tableName, data);
 
-    // Insert the data
-    await db.insert(
+    // Handle nested objects first
+    final processedData = Map<String, dynamic>.from(data);
+    for (var entry in data.entries) {
+      if (entry.value is Map<String, dynamic>) {
+        final nestedTableName = '${entry.key}s';
+        final nestedId = await insert(nestedTableName, entry.value as Map<String, dynamic>);
+        processedData['${entry.key}_id'] = nestedId;
+        processedData.remove(entry.key);
+      }
+    }
+
+    // Insert the main record
+    return await db.insert(
       tableName,
-      _mapDataForDb(data),
+      _mapDataForDb(processedData),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }

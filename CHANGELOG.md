@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.1 - 2024-11-22
+
+### Added
+- Added support for nested objects in database operations
+  - Automatic creation of related tables
+  - Foreign key relationships
+  - Cascading DateTime handling in nested structures
+
+## 1.1.2 - 2024-11-22
+
+### Added
+- Improved DateTime handling in database operations
+  - DateTime fields are now stored with '_datetime' suffix
+  - Automatic conversion of DateTime fields when retrieving data
+  - More reliable DateTime serialization and deserialization
+
 ## 1.1.0 - 2024-11-19
 
 ### Added

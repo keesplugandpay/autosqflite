@@ -1,6 +1,6 @@
 name: autosqflite
 description: An automatic SQLite database helper for Dart/Flutter that handles table creation and schema updates automatically.
-version: 1.1.1
+version: 1.2.1
 homepage: https://github.com/keesplugandpay/autosqflite
 
 environment:

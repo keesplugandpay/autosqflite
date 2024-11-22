@@ -25,7 +25,7 @@ class Todo {
       id: map['id'],
       title: map['title'],
       completed: map['completed'],
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt']),
+      createdAt: map['createdAt'],
     );
   }
 }

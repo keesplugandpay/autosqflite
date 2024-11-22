@@ -24,6 +24,8 @@ A simple, automatic SQLite database helper for Flutter that handles table creati
 - 🛠 Zero configuration required
 - 🎯 Type-safe operations
 - 🔒 Password protection for databases
+- 🔄 Support for nested objects with foreign key relationships
+- 📅 Automatic DateTime handling
 
 ## Installation
 
@@ -145,13 +147,32 @@ class User {
 
 AutoSqfLite automatically maps between Dart and SQLite types:
 
-| Dart Type | SQLite Type |
-|-----------|-------------|
-| int       | INTEGER     |
-| double    | REAL        |
-| String    | TEXT        |
-| bool      | INTEGER     |
-| DateTime  | INTEGER     |
+| Dart Type | SQLite Type | Storage Format |
+|-----------|-------------|----------------|
+| int       | INTEGER     | Direct         |
+| double    | REAL        | Direct         |
+| String    | TEXT        | Direct         |
+| bool      | INTEGER     | 0 or 1         |
+| DateTime  | INTEGER     | Milliseconds since epoch with '_datetime' suffix |
+
+### DateTime Handling
+
+DateTime fields are automatically:
+- Stored as milliseconds since epoch
+- Suffixed with '_datetime' in the database
+- Automatically converted back to DateTime when retrieved
+- No manual conversion needed in your models
+
+```dart
+// Example with DateTime
+class Event {
+  final DateTime createdAt;
+  
+  // AutoSqfLite handles the DateTime conversion automatically
+  // The field will be stored as 'createdAt_datetime' in the database
+  Event({required this.createdAt});
+}
+```
 
 ## Example
 
@@ -206,3 +227,36 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 If you find this package helpful, please give it a like on [pub.dev](https://pub.dev/packages/autosqflite) and star our [GitHub repository](https://github.com/keesplugandpay/autosqflite)!
+
+### DateTime and Nested Objects
+
+AutoSqfLite provides enhanced support for DateTime fields and nested objects:
+
+```dart
+// Example with DateTime and nested object
+class Order {
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  Order({
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  // Convert to Map for database operations
+  Map<String, dynamic> toMap() {
+    return {
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
+    };
+  }
+
+  // Create from Map
+  factory Order.fromMap(Map<String, dynamic> map) {
+    return Order(
+      createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt']),
+      updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updatedAt']),
+    );
+  }
+}
+```
